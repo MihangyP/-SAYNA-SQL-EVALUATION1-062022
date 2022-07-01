@@ -41,7 +41,7 @@ CREATE TABLE emprunter (
 	index(dateEmp)
 ) ENGINE InnoDB;
 
--- ajout de données dans les champs
+-- ajout de données dans les champs de la table oeuvres
 
 INSERT INTO oeuvres VALUES 
 (1,'Narcisse et Goldmund','Hermann HESSE', 1930, 'Roman'),
@@ -62,6 +62,8 @@ INSERT INTO oeuvres VALUES
 (16,'Penser la logique','Gilbert HOTTOIS', 1989, 'Philosophie'),
 (17,'Au coeur des ténèbres','Joseph CONRAD',1899, 'Roman'),
 (18,'Jan Karski','Yannick HAENEL', 2009, 'Roman');
+
+-- ajout de données dans les champs de la table adherents
 
 INSERT INTO adherents VALUES 
 (1,'Lecoeur','Jeanette','16 rue de la République, 75010 Paris','0145279274'),
@@ -94,6 +96,8 @@ INSERT INTO adherents VALUES
 (28,'Frederic','Cyril','15 rue du Simplon, 75018 Paris','0173625492'),
 (29,'Crestard','Cedric','5 rue Doudeauville, 75018 Paris','0629485700'),
 (30,'Le Bihan','Karine','170 bis rue Ordener, 75018 Paris','0638995221');
+
+-- ajout de données dans les champs de la table livres
 
 INSERT INTO livres VALUES 
 (1,'GF',1),
@@ -129,6 +133,8 @@ INSERT INTO livres VALUES
 (31,'FOLIO',17),
 (32,'GALLIMARD',18);
 
+-- ajout de données dans les champs de la table emprunter
+
 INSERT INTO emprunter VALUES 
 (1,from_days(to_days(current_date)-350),21,from_days(to_days(current_date)-349),26),
 (4,from_days(to_days(current_date)-323),21,from_days(to_days(current_date)-310),4),
@@ -163,5 +169,108 @@ INSERT INTO emprunter VALUES
 (31,from_days(to_days(current_date)-1),14, NULL,20),
 (21,from_days(to_days(current_date)-1),14, NULL,20),
 (32,from_days(to_days(current_date)-1),14, NULL,20);
+
+-- les livres actuellement empruntés 
+SELECT E.NL, O.titre, E.dateret 
+FROM emprunter E, livres L, oeuvres O 
+WHERE E.NL = L.NL 
+AND L.NO=O.NO 
+AND E.dateret is NULL;
+
+-- 8. les livres empruntés en septembre 2009
+
+SELECT E.NL, O.titre, datemp 
+FROM emprunter E, livres L, oeuvres O 
+WHERE E.NL = L.NL 
+AND L.NO=O.NO 
+AND year(E.datemp) = 2009 
+AND month (E.datemp) = 09;
+
+-- 9. tous les livres empruntés par Fedor Dostoievski
+SELECT DISTINCT A.NA, A.nom 
+FROM emprunter E, livres L, adherents A, oeuvres O 
+WHERE E.NL = L.NL 
+AND E.NA = A.NA 
+AND L.NO=O.NO 
+AND UPPER(O.auteur) like ‘DOSTOIEVSKI’;
+
+-- ajout d'un nouvel adhérent
+INSERT into adherents
+VALUES (NULL, ‘DUPOND’, ‘Olivier’, ‘76, quai de la Loire, 75019 Paris’, 0102030405) ;
+
+-- 10. les livres empruntés par Jeannette Lecoeur
+
+SELECT * FROM emprunter, adhérents, livres WHERE 
+(nom like 'Lecoeur' and prenom 'Jeannette');
+
+-- 11. Mise à jour de la base de données
+SELECT NA, Nom, Prenom FROM adherents
+WHERE upper(nom)=’CROZIER’ 
+AND upper(prenom)=’MARTINE’;
+
+-- 12. Mise à jour de la base de données
+SELECT NA, Nom, Prenom FROM adherents
+WHERE upper(nom)=’FREDERIC’ 
+AND upper(prenom)=’CYRIL’;
+              
+SELECT * FROM emprunter
+WHERE dateret is NULL
+AND NA = 28;
+UPDATE emprunter SET dateret = current_date WHERE dateret is NULL AND NL = 2;
+UPDATE emprunter SET dateret = current_date WHERE dateret is NULL AND NL = 9;
+
+-- 13. ajout d'un nouveau tuple dans la table emprunter
+INSERT INTO emprunter VALUES (23, current_date(), 14, NULL, 28);
+
+-- 14. ajout d'un nouveau tuple dans la table emprunter
+INSERT INTO emprunter VALUES (29, current_date(), 14, NULL, 28);
+
+-- 15. le ou les auteur(s) du titre 'Voyage au bout de la nuit'
+SELECT DISTINCT auteur FROM oeuvres WHERE (titre like "Voyage au bout de la nuit");  
+
+-- 16. le ou les éditeurs du titre 'Narcisse et Goldmund'
+SELECT DISTINCT L.editeur FROM livres L, oeuvres O, 
+WHERE L.NO=O.NO AND upper(O.titre) like "NARCISSE ET GOLDMUND";
+
+-- 17. les adhérents actuellement en retard
+
+SELECT DISTINCT A.NA, A.nom 
+FROM emprunter E, livres L, adherents A, oeuvres O 
+WHERE E.NL = L.NL 
+AND E.NA = A.NA 
+AND L.NO=O.NO 
+AND E.dateret is NULL 
+AND to_days(current_date) > to_days(E.datemp) + 14;
+
+-- 18. les livres actuellement en retard
+
+SELECT E.NL, O.titre, dateret, datemp,current_date 
+FROM emprunter E, livres L, oeuvres O 
+WHERE E.NL = L.NL AND L.NO=O.NO AND E.dateret is NULL 
+AND to_days(current_date) > to_days(E.datemp) + 14;
+
+-- 19. les adhérents en retard, avec le nombre de livres en retard et la moyenne du nombre de jours de retard.
+SELECT A.NA, A.nom, count(*),avg(to_days(current_date)- to_days(E.datemp) – 14) 
+AS moy_retard 
+FROM emprunter E, livres L, adherents A, oeuvres O 
+WHERE E.NL = L.NL AND E.NA = A.NA AND L.NO=O.NO AND E.dateret is NULL
+AND to_days(current_date) > to_days(E.datemp) + 14 GROUP BY A.NA, A.nom;
+
+-- 20. nombre de livres empruntés par auteur
+SELECT O.auteur, count(*) 
+FROM emprunter E, livres L, oeuvres O 
+WHERE E.NL = L.NL 
+AND L.NO=O.NO 
+GROUP BY O.auteur; 
+
+-- 21. nombre de livres empruntés par éditeur
+SELECT L.editeur, count(*) 
+FROM emprunter E, livres L 
+WHERE E.NL = L.NL 
+GROUP BY L.editeur; 
+
+
+
+
 
 
